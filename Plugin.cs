@@ -38,12 +38,27 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
     /// <inheritdoc />
     public IEnumerable<PluginPageInfo> GetPages()
     {
+        var ns = GetType().Namespace;
         return new[]
         {
             new PluginPageInfo
             {
                 Name = Name,
-                EmbeddedResourcePath = GetType().Namespace + ".Configuration.configPage.html"
+                EmbeddedResourcePath = ns + ".Configuration.configPage.html"
+            },
+            new PluginPageInfo
+            {
+                Name = "YouTube DL Download",
+                EmbeddedResourcePath = ns + ".Configuration.downloadPage.html",
+                EnableInMainMenu = true,
+                MenuSection = "server",
+                MenuIcon = "download",
+                DisplayName = "YouTube DL"
+            },
+            new PluginPageInfo
+            {
+                Name = "YouTube DL Download JS",
+                EmbeddedResourcePath = ns + ".Configuration.downloadPage.js"
             }
         };
     }

@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>YouTube DL</title>
+</head>
+<body>
+    <div id="YouTubeDLDownloadPage" data-role="page" class="page type-interior pluginConfigurationPage"
+         data-require="emby-input,emby-button,emby-select"
+         data-controller="__plugin/YouTube DL Download JS">
+        <div data-role="content">
+            <div class="content-primary">
+                <h2>Download YouTube Video</h2>
+                <form id="YouTubeDLDownloadForm">
+                    <div class="inputContainer">
+                        <label class="inputLabel" for="ytUrl">YouTube URL</label>
+                        <input is="emby-input" type="url" id="ytUrl" required placeholder="https://www.youtube.com/watch?v=..." />
+                    </div>
+                    <div class="inputContainer">
+                        <label class="inputLabel" for="ytCollection">Collection</label>
+                        <select is="emby-select" id="ytCollection">
+                            <option value="">None</option>
+                        </select>
+                    </div>
+                    <div class="inputContainer">
+                        <label class="inputLabel" for="ytGenre">Genre (optional)</label>
+                        <input is="emby-input" type="text" id="ytGenre" placeholder="Leave blank for default" />
+                    </div>
+                    <button is="emby-button" type="submit" id="ytSubmitBtn" class="raised button-submit block emby-button">
+                        <span>Download</span>
+                    </button>
+                </form>
+                <div id="ytStatus" style="margin-top: 1.5em; display: none;">
+                    <h3 style="margin-bottom: 0.5em;">Status</h3>
+                    <p id="ytStatusText" style="font-size: 1.1em;"></p>
+                    <p id="ytStatusPath" style="opacity: 0.7;"></p>
+                    <p id="ytStatusError" style="color: #f44336;"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

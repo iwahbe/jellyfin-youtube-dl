@@ -14,5 +14,7 @@
 
   <ItemGroup>
     <EmbeddedResource Include="Configuration/configPage.html" />
+    <EmbeddedResource Include="Configuration/downloadPage.html" />
+    <EmbeddedResource Include="Configuration/downloadPage.js" />
   </ItemGroup>
 </Project>
