@@ -110,6 +110,7 @@ public class YouTubeDownloadController : ControllerBase
             task.Status = "downloading";
             var formatStr = $"bestvideo[height<={config.MaxHeight}][fps<={config.MaxFps}]+bestaudio/best[height<={config.MaxHeight}]";
             var dlArgs = $"-f \"{formatStr}\" --merge-output-format mp4 --no-playlist --embed-chapters " +
+                         "--write-subs --write-auto-subs --sub-langs \"en.*\" --convert-subs srt " +
                          $"{denoRuntime} " +
                          $"-o \"{outputFile}\" \"{request.Url}\"";
             await RunProcess(config.YtDlpPath, dlArgs);
