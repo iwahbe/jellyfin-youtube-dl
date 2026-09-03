@@ -217,7 +217,7 @@ public class YouTubeDownloadController : ControllerBase
 
         if (Directory.GetFiles(Path.GetDirectoryName(item.Path)!, Path.GetFileName(outputBase) + ".*.srt").Length == 0)
         {
-            await RunProcess(config.YtDlpPath, $"{DenoRuntime} --skip-download --write-subs --write-auto-subs --convert-subs srt --no-playlist -o \"{outputBase}\" \"{url}\"");
+            await RunProcess(config.YtDlpPath, $"{CommonArgs} --skip-download --write-subs --write-auto-subs --convert-subs srt --no-playlist -o \"{outputBase}\" \"{url}\"");
         }
 
         _providerManager.QueueRefresh(item.Id, new MetadataRefreshOptions(new DirectoryService(_fileSystem))
@@ -237,7 +237,7 @@ public class YouTubeDownloadController : ControllerBase
         var tempFile = Path.ChangeExtension(item.Path, null) + ".redownload.mp4";
 
         task.Status = "downloading";
-        await RunProcess(config.YtDlpPath, $"-f \"{FormatString(config)}\" --merge-output-format mp4 --no-playlist --embed-chapters {DenoRuntime} -o \"{tempFile}\" \"{WatchUrl(videoId)}\"");
+        await RunProcess(config.YtDlpPath, $"-f \"{FormatString(config)}\" --merge-output-format mp4 --no-playlist --embed-chapters {CommonArgs} -o \"{tempFile}\" \"{WatchUrl(videoId)}\"");
         System.IO.File.Move(tempFile, item.Path, overwrite: true);
 
         await RefreshItem(task, item, videoId);
@@ -263,7 +263,7 @@ public class YouTubeDownloadController : ControllerBase
             task.Status = "downloading";
             var dlArgs = $"-f \"{FormatString(config)}\" --merge-output-format mp4 --no-playlist --embed-chapters " +
                          "--write-subs --write-auto-subs --convert-subs srt " +
-                         $"{DenoRuntime} " +
+                         $"{CommonArgs} " +
                          $"-o \"{outputFile}\" \"{request.Url}\"";
             await RunProcess(config.YtDlpPath, dlArgs);
 
@@ -300,7 +300,7 @@ public class YouTubeDownloadController : ControllerBase
         }
     }
 
-    private const string DenoRuntime = "--js-runtimes deno:/var/lib/jellyfin/.deno/bin/deno";
+    private const string CommonArgs = "--js-runtimes deno:/var/lib/jellyfin/.deno/bin/deno --no-mtime";
     private static readonly System.Text.RegularExpressions.Regex VideoIdPattern = new("^[A-Za-z0-9_-]{11}$");
 
     private static string WatchUrl(string videoId) => "https://www.youtube.com/watch?v=" + videoId;
@@ -310,7 +310,7 @@ public class YouTubeDownloadController : ControllerBase
 
     private static async Task<VideoMetadata> FetchMetadata(PluginConfiguration config, string url)
     {
-        var metaJson = await RunProcess(config.YtDlpPath, $"{DenoRuntime} --dump-json --no-playlist \"{url}\"");
+        var metaJson = await RunProcess(config.YtDlpPath, $"{CommonArgs} --dump-json --no-playlist \"{url}\"");
         using var doc = JsonDocument.Parse(metaJson);
         var root = doc.RootElement;
         string Get(string name) => root.TryGetProperty(name, out var p) ? p.GetString() ?? "" : "";
@@ -327,7 +327,7 @@ public class YouTubeDownloadController : ControllerBase
     {
         try
         {
-            await RunProcess(config.YtDlpPath, $"{DenoRuntime} --skip-download --write-thumbnail --convert-thumbnails jpg -o \"thumbnail:{outputBase}-thumb\" --no-playlist \"{url}\"");
+            await RunProcess(config.YtDlpPath, $"{CommonArgs} --skip-download --write-thumbnail --convert-thumbnails jpg -o \"thumbnail:{outputBase}-thumb\" --no-playlist \"{url}\"");
         }
         catch (Exception ex)
         {
