@@ -327,7 +327,11 @@ public class YouTubeDownloadController : ControllerBase
     {
         try
         {
-            await RunProcess(config.YtDlpPath, $"{CommonArgs} --skip-download --write-thumbnail --convert-thumbnails jpg -o \"thumbnail:{outputBase}-thumb\" --no-playlist \"{url}\"");
+            // yt-dlp converts the thumbnail in its temp path and then moves it. Keep the
+            // temp path on the target volume: a cross-volume move copies file modes, which
+            // exFAT rejects.
+            var dir = Path.GetDirectoryName(outputBase);
+            await RunProcess(config.YtDlpPath, $"{CommonArgs} --skip-download --write-thumbnail --convert-thumbnails jpg -P \"temp:{dir}\" -o \"thumbnail:{outputBase}-thumb\" --no-playlist \"{url}\"");
         }
         catch (Exception ex)
         {
