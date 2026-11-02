@@ -202,23 +202,11 @@ public class YouTubeDownloadController : ControllerBase
     {
         var config = Plugin.Instance?.Configuration ?? new PluginConfiguration();
         var url = WatchUrl(videoId);
-        var outputBase = Path.ChangeExtension(item.Path, null);
 
         task.Status = "downloading_metadata";
         var meta = await FetchMetadata(config, url);
 
-        task.Status = "processing_metadata";
-        MergeNfo(outputBase + ".nfo", meta, config.DefaultGenre);
-
-        if (!System.IO.File.Exists(outputBase + "-thumb.jpg"))
-        {
-            await DownloadThumbnail(config, outputBase, url);
-        }
-
-        if (Directory.GetFiles(Path.GetDirectoryName(item.Path)!, Path.GetFileName(outputBase) + ".*.srt").Length == 0)
-        {
-            await RunProcess(config.YtDlpPath, $"{CommonArgs} --skip-download --write-subs --write-auto-subs --convert-subs srt --no-playlist -o \"{outputBase}\" \"{url}\"");
-        }
+        await WriteSidecars(task, config, meta, Path.ChangeExtension(item.Path, null), url, config.DefaultGenre);
 
         _providerManager.QueueRefresh(item.Id, new MetadataRefreshOptions(new DirectoryService(_fileSystem))
         {
@@ -237,7 +225,7 @@ public class YouTubeDownloadController : ControllerBase
         var tempFile = Path.ChangeExtension(item.Path, null) + ".redownload.mp4";
 
         task.Status = "downloading";
-        await RunProcess(config.YtDlpPath, $"-f \"{FormatString(config)}\" --merge-output-format mp4 --no-playlist --embed-chapters {CommonArgs} -o \"{tempFile}\" \"{WatchUrl(videoId)}\"");
+        await DownloadVideo(config, tempFile, WatchUrl(videoId));
         System.IO.File.Move(tempFile, item.Path, overwrite: true);
 
         await RefreshItem(task, item, videoId);
@@ -253,31 +241,14 @@ public class YouTubeDownloadController : ControllerBase
             task.Status = "downloading_metadata";
 
             var meta = await FetchMetadata(config, request.Url);
-            var (videoId, title, description, uploader, uploadDate, thumbnail) = meta;
-            var safeTitle = MakeSafeFilename(title);
-
-            var outputBase = Path.Combine(outputDir, $"{safeTitle} [{videoId}]");
+            var outputBase = Path.Combine(outputDir, $"{MakeSafeFilename(meta.Title)} [{meta.Id}]");
             var outputFile = outputBase + ".mp4";
 
-            // Step 2: Download
             task.Status = "downloading";
-            var dlArgs = $"-f \"{FormatString(config)}\" --merge-output-format mp4 --no-playlist --embed-chapters " +
-                         "--write-subs --write-auto-subs --convert-subs srt " +
-                         $"{CommonArgs} " +
-                         $"-o \"{outputFile}\" \"{request.Url}\"";
-            await RunProcess(config.YtDlpPath, dlArgs);
-
+            await DownloadVideo(config, outputFile, request.Url);
             task.OutputPath = outputFile;
 
-            task.Status = "processing_metadata";
-            if (!string.IsNullOrEmpty(thumbnail))
-            {
-                await DownloadThumbnail(config, outputBase, request.Url);
-            }
-
-            // Step 4: Generate NFO
-            var nfoFile = outputBase + ".nfo";
-            GenerateNfo(nfoFile, title, description, uploader, uploadDate, videoId, request.Genre ?? config.DefaultGenre);
+            await WriteSidecars(task, config, meta, outputBase, request.Url, request.Genre ?? config.DefaultGenre);
 
             task.Status = "complete";
             _logger.LogInformation("Download complete: {Path}", outputFile);
@@ -321,6 +292,45 @@ public class YouTubeDownloadController : ControllerBase
             Get("uploader"),
             Get("upload_date"),
             Get("thumbnail"));
+    }
+
+    /// <summary>
+    /// Download the video file. Any failure propagates: a missing video is never acceptable.
+    /// </summary>
+    private static Task DownloadVideo(PluginConfiguration config, string outputFile, string url) =>
+        RunProcess(config.YtDlpPath, $"-f \"{FormatString(config)}\" --merge-output-format mp4 --no-playlist --embed-chapters {CommonArgs} -o \"{outputFile}\" \"{url}\"");
+
+    /// <summary>
+    /// Write the nfo next to the video and fetch the thumbnail and captions that are missing.
+    /// The thumbnail and captions are best effort: their failures are logged and do not fail the task.
+    /// </summary>
+    private async Task WriteSidecars(DownloadTask task, PluginConfiguration config, VideoMetadata meta, string outputBase, string url, string genre)
+    {
+        task.Status = "processing_metadata";
+        MergeNfo(outputBase + ".nfo", meta, genre);
+
+        if (!System.IO.File.Exists(outputBase + "-thumb.jpg"))
+        {
+            await DownloadThumbnail(config, outputBase, url);
+        }
+
+        if (Directory.GetFiles(Path.GetDirectoryName(outputBase)!, Path.GetFileName(outputBase) + ".*.srt").Length == 0)
+        {
+            await DownloadSubtitles(config, outputBase, url);
+        }
+    }
+
+    private async Task DownloadSubtitles(PluginConfiguration config, string outputBase, string url)
+    {
+        try
+        {
+            await RunProcess(config.YtDlpPath, $"{CommonArgs} --skip-download --write-subs --write-auto-subs --convert-subs srt --no-playlist -o \"{outputBase}\" \"{url}\"");
+        }
+        catch (Exception ex)
+        {
+            // YouTube answers 429 for auto-translated captions (yt-dlp/yt-dlp#13831).
+            _logger.LogWarning(ex, "Failed to download captions");
+        }
     }
 
     private async Task DownloadThumbnail(PluginConfiguration config, string outputBase, string url)
